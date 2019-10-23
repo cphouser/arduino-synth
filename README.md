@@ -1,10 +1,10 @@
-# arduino synth
+# Arduino Synth
 
-## dependencies
+## Dependencies
 * Mozzi 1.0.2 [https://github.com/sensorium/Mozzi]
 * PS2Keyboard 1.0.2 [https://github.com/techpaul/PS2KeyAdvanced]
 
-## history
+## History
 #### 2016-2017
 Successfully tested PS2 keyboard input on Arduino Duemillenove, basic wavetable rendering with Mozzi. 
 Began adding control input (16 buttons on 8 GPIO pins, 6 slide potentiometers on each analog input). 
