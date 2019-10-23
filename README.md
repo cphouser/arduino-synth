@@ -1,8 +1,8 @@
 # arduino synth
 
 ## dependencies
-Mozzi 1.0.2 [https://github.com/sensorium/Mozzi]
-PS2Keyboard 1.0.2 [https://github.com/techpaul/PS2KeyAdvanced]
+* Mozzi 1.0.2 [https://github.com/sensorium/Mozzi]
+* PS2Keyboard 1.0.2 [https://github.com/techpaul/PS2KeyAdvanced]
 
 ## history
 #### 2016-2017
