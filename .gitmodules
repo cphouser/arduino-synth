@@ -1,0 +1,9 @@
+[submodule "lib/Mozzi"]
+	path = lib/Mozzi
+	url = https://github.com/sensorium/Mozzi.git
+[submodule "lib/PS2KeyAdvanced"]
+	path = lib/PS2KeyAdvanced
+	url = https://github.com/techpaul/PS2KeyAdvanced.git
+[submodule "lib/TM1637"]
+	path = lib/TM1637
+	url = https://github.com/xeroxcat/TM1637.git
