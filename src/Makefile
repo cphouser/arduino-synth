@@ -15,7 +15,7 @@ ARDMK_DIR     	= /usr/share/arduino
 ### ARDUINO_DIR
 ### Path to the Arduino application and resources directory.
 #ARDUINO_DIR       = /usr/share/arduino
-ARDUINO_DIR       = $(realpath $(PROJECT_DIR)/../arduino-1.8.10)
+ARDUINO_DIR       = $(realpath $(PROJECT_DIR)/../arduino-1.8.12)
 
 ### USER_LIB_PATH
 ### Path to where the your project's libraries are stored.
