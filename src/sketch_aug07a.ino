@@ -139,6 +139,7 @@ char activeButton = BUTT_NONE;//last button pressed
 char pollTimer = 0;
 char activePoll = 0;//countdown timer 64-0 (1seconds) till last button can be pressed again
 char noisePoll = 0;
+char display_btn;
 Note noteOne;
 Note noteTwo;
 Note noteThree;
@@ -194,6 +195,10 @@ void updateControl(){
   //noteFour.atkDec.nextVal();
   //noteFive.atkDec.nextVal();
   
+  if (display.update() && activeButton != display_btn) {
+      display_btn = activeButton;
+      display.showNumberDec(display_btn, true);
+  }
   if( keyboard.available() ) {//keyb read function
   c = keyboard.read(); // read the next key
 
