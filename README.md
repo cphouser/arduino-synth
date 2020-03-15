@@ -16,8 +16,10 @@ Began adding volume envelopes to keyboard input.
 #### 2019
 Added TM1637 7-segment display, began testing.
 
+#### 2020
+Display library rewritten without blocking with delayMicroseconds.
+
 #### Future Work
-TM1637Display Library does not work with mozzi due to blocking while setting segment values. Try rewriting with mozzi's builtin timer functions.
 Completely rewrite sketch - separate IO logic from DSP logic.
 Experiment more with digital filters and envelopes. Practice more fixed-point arithmetic.
 
