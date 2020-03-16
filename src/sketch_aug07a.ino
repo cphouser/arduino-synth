@@ -201,11 +201,8 @@ void updateControl(){
   }
   if( keyboard.available() ) {//keyb read function
   c = keyboard.read(); // read the next key
-
   if( c > 0 ) {
       int note_val = note(c);//note_val: 4 digits, 0xxx vs 1xxx --> key is on or off (key == xxx)
-      //Serial.print(" ");
-      //Serial.print(note_val);
       if(note_val < 1000) {
         if (findFreq(note_val) == noteOne.noteFreq 
         || findFreq(note_val) == noteTwo.noteFreq 
@@ -243,42 +240,6 @@ void updateControl(){
     }
   }
   buttonsManager(buttonVal());
-  /*
-  Serial.print("\n");
-  Serial.print(pollTimer);
-  Serial.print("-");
-  Serial.print(noisePoll);
-  Serial.print("-");
-  Serial.print(activePoll);
-  Serial.print("-");
-  Serial.print(buttonVal());
-  
-  
-  for(int i=0;i<=15;i++){
-    if(buttons[i]!=0){
-      int j = buttons[i];
-      Serial.print(" ");
-      Serial.print(i);
-      Serial.print("-");
-      Serial.print(j);
-      Serial.print(" ");
-      //display.showNumberDec(i);
-    }
-  }
-  
-  //Serial.print(oneFreq);
-  
-  Serial.print(" ");
-  Serial.print(noteOne.atkDec.currentVal());
-  //Serial.print(" ");
-  //Serial.print(fouFreq);
-  //Serial.print(" ");
-  //Serial.print(fivFreq);
-  
-  Serial.print("\n");
-  */
-  //Serial.print(mozziAnalogRead(POT1));
-  //display.showNumberDec(POT1,true);
 }
 
 int updateAudio(){
@@ -387,7 +348,6 @@ void buttonsManager(char pressed){
           }
           break;
         case BUTT_B:
-          
           break;
         case BUTT_C://hipass invert attack/decay
           if (buttons[BUTT_C] == 1) {
@@ -411,10 +371,8 @@ void buttonsManager(char pressed){
           }
           break;
         case BUTT_F:
-          
           break;
         case BUTT_G:
-          
           break;
         case BUTT_H://lopass invert attack/decay
           if (buttons[BUTT_H] == 1) {
