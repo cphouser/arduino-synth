@@ -55,13 +55,10 @@
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>
 #include <tables/square_no_alias_2048_int8.h>
-//#include <tables/logistic2048_int8.h>
-//#include <tables/cyc2048_int8.h>
 
 #include <PS2KeyAdvanced.h>
 #include <PS2KeyCode.h>
 #include <PS2KeyTable.h>
-//#include "NoteEnvelope.h"
 
 #define DATAPIN 4
 #define IRQPIN  3
@@ -91,6 +88,7 @@
 #define BUTT_NONE -1
 #define CLK 1
 #define DIO 2
+#define CONTROL_RATE 128
 
 struct Note {
   Q16n16 noteFreq = 0;
@@ -98,47 +96,26 @@ struct Note {
 };
 
 Q16n16 note(uint16_t);
-//float findFreq(int);
 char buttonVal();
 void buttonsManager(char);
 
-Oscil <2048, AUDIO_RATE> osc1[] = {
-  Oscil <2048, AUDIO_RATE>(SIN2048_DATA), Oscil  <2048, AUDIO_RATE>(SAW2048_DATA), Oscil  <2048, AUDIO_RATE>(TRIANGLE2048_DATA),
-  Oscil  <2048, AUDIO_RATE>(SQUARE_NO_ALIAS_2048_DATA)
-};
-Oscil <2048, AUDIO_RATE> osc2[] = {
-  Oscil <2048, AUDIO_RATE>(SIN2048_DATA), Oscil  <2048, AUDIO_RATE>(SAW2048_DATA), Oscil  <2048, AUDIO_RATE>(TRIANGLE2048_DATA),
-  Oscil  <2048, AUDIO_RATE>(SQUARE_NO_ALIAS_2048_DATA)
-};
-Oscil <2048, AUDIO_RATE> osc3[] = {
-  Oscil <2048, AUDIO_RATE>(SIN2048_DATA), Oscil  <2048, AUDIO_RATE>(SAW2048_DATA), Oscil  <2048, AUDIO_RATE>(TRIANGLE2048_DATA),
-  Oscil  <2048, AUDIO_RATE>(SQUARE_NO_ALIAS_2048_DATA)
-};
-Oscil <2048, AUDIO_RATE> osc4[] = {
-  Oscil <2048, AUDIO_RATE>(SIN2048_DATA), Oscil  <2048, AUDIO_RATE>(SAW2048_DATA), Oscil  <2048, AUDIO_RATE>(TRIANGLE2048_DATA),
-  Oscil  <2048, AUDIO_RATE>(SQUARE_NO_ALIAS_2048_DATA)
-};
-Oscil <2048, AUDIO_RATE> osc5[] = {
-  Oscil <2048, AUDIO_RATE>(SIN2048_DATA), Oscil  <2048, AUDIO_RATE>(SAW2048_DATA), Oscil  <2048, AUDIO_RATE>(TRIANGLE2048_DATA),
-  Oscil  <2048, AUDIO_RATE>(SQUARE_NO_ALIAS_2048_DATA)
-};
+Oscil <2048, AUDIO_RATE> osc1;
+Oscil <2048, AUDIO_RATE> osc2;
+Oscil <2048, AUDIO_RATE> osc3;
+Oscil <2048, AUDIO_RATE> osc4;
+Oscil <2048, AUDIO_RATE> osc5;
 
-//int8_t* waveTables[] = {"SIN2048_DATA","SAW2048_DATA","TRIANGLE2048_DATA","SQUARE_NO_ALIAS_2048_DATA"};
-//float oneFreq = 0;
-//float twoFreq = 0;
-//float thrFreq = 0;
-//float fouFreq = 0;
-//float fivFreq = 0;
+const int8_t* waveTables[4] = {SIN2048_DATA, SAW2048_DATA, TRIANGLE2048_DATA, SQUARE_NO_ALIAS_2048_DATA};
 
-//int buttonTiming = 0;
-  //Cycle Bounds:4,0,1,1,1, 0,0,1,1,1, 3,1,1, 3,1,1
-  //Button Label:A,B,C,D,E, F,G,H,I,J, K,L,M, N,O,P
-unsigned char buttons[] = {0,0,0,0,0, 0,0,0,0,0, 0,0,0, 0,0,0};
-char activeButton = BUTT_NONE;//last button pressed
+        //Cycle Bounds:3,0,1,1,1, 0,0,1,1,1, 3,1,1, 3,1,1
+        //Button Label:A,B,C,D,E, F,G,H,I,J, K,L,M, N,O,P
+uint8_t buttons[16] = {0,0,0,0,0, 0,0,0,0,0, 0,0,0, 0,0,0};
+uint8_t activeButton = BUTT_NONE;//last button pressed
+bool button_q = false;
 char pollTimer = 0;
-char activePoll = 0;//countdown timer 64-0 (1seconds) till last button can be pressed again
-char noisePoll = 0;
-char display_btn;
+byte activePoll = 0;//countdown timer 64-0 (1seconds) till last button can be pressed again
+byte noisePoll = 0;
+uint8_t display_btn;
 Note noteOne;
 Note noteTwo;
 Note noteThree;
@@ -152,13 +129,8 @@ TM1637Display display(CLK, DIO);
 
 void setup()
 {
-  startMozzi(CONTROL_RATE);
-  //osc.setFreq(one_freq);
-  //noteOne.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-  //noteTwo.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-  //noteThree.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-  //noteFour.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-  //noteFive.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
+  //Serial.begin(115200);
+
   pinMode(AUDIOUT, OUTPUT);
   pinMode(5, INPUT);
   pinMode(6, INPUT);
@@ -169,34 +141,35 @@ void setup()
   pinMode(12, INPUT);
   pinMode(13, INPUT);
   keyboard.begin( DATAPIN, IRQPIN ); // Configure the keyboard library
-  //display.
-  //Serial.begin(9600);
   display.setBrightness(0x0a);
-  display.showNumberDec(1,true);
-  /*
-  #if defined(ARDUINO_ARCH_AVR)
-    Serial.println( F( "PS2 Advanced Key Simple Test:" ) );
-  #elif defined(ARDUINO_ARCH_SAM)
-    Serial.println( "PS2 Advanced Key Simple Test:" );
-  #endif
-  */
+  display.clear();
+  startMozzi(CONTROL_RATE);
+  osc1.setTable(SIN2048_DATA);
+  osc2.setTable(SIN2048_DATA);
+  osc3.setTable(SIN2048_DATA);
+  osc4.setTable(SIN2048_DATA);
+  osc5.setTable(SIN2048_DATA);
 }
 
 void updateControl(){
-  osc1[buttons[BUTT_A]].setFreq_Q16n16(noteOne.noteFreq);
-  osc2[buttons[BUTT_A]].setFreq_Q16n16(noteTwo.noteFreq);
-  osc3[buttons[BUTT_A]].setFreq_Q16n16(noteThree.noteFreq);
-  osc4[buttons[BUTT_A]].setFreq_Q16n16(noteFour.noteFreq);
-  osc5[buttons[BUTT_A]].setFreq_Q16n16(noteFive.noteFreq);
+  osc1.setFreq_Q16n16(noteOne.noteFreq);
+  osc2.setFreq_Q16n16(noteTwo.noteFreq);
+  osc3.setFreq_Q16n16(noteThree.noteFreq);
+  osc4.setFreq_Q16n16(noteFour.noteFreq);
+  osc5.setFreq_Q16n16(noteFive.noteFreq);
   //noteOne.atkDec.nextVal();
   //noteTwo.atkDec.nextVal();
   //noteThree.atkDec.nextVal();
   //noteFour.atkDec.nextVal();
   //noteFive.atkDec.nextVal();
 
-  if (display.update() && activeButton != display_btn) {
+  if (display.update()) {
+    if (activeButton != display_btn) {
       display_btn = activeButton;
       display.showNumberDec(display_btn, true);
+    } else {
+      display.setSegments(buttons, 4);
+    }
   }
   if( keyboard.available() ) {//keyb read function
     c = keyboard.read(); // read the next key
@@ -241,22 +214,28 @@ void updateControl(){
     }
   }
   buttonsManager(buttonVal());
+  if (button_q) {
+    osc1.setTable(waveTables[buttons[BUTT_A]]);
+    osc2.setTable(waveTables[buttons[BUTT_A]]);
+    osc3.setTable(waveTables[buttons[BUTT_A]]);
+    osc4.setTable(waveTables[buttons[BUTT_A]]);
+    osc5.setTable(waveTables[buttons[BUTT_A]]);
+    button_q = false;
+  }
 }
 
 int updateAudio(){
-    int note1 = osc1[buttons[BUTT_A]].next();
-    //int envl1 =
-    //int note2 = osc2[buttons[BUTT_A]].next();
-    //int note3 = osc3[buttons[BUTT_A]].next();
-    //int note4 = osc4[buttons[BUTT_A]].next();
-    //int note5 = osc5[buttons[BUTT_A]].next();
-    return note1;
-  //return ((note1+note2+note3+note4+note5)>>2);
+  int8_t note1 = osc1.next();
+  int8_t note2 = osc2.next();
+  int8_t note3 = osc3.next();
+  int8_t note4 = osc4.next();
+  int8_t note5 = osc5.next();
+  return ((note1+note2+note3+note4+note5)>>2);
   //adds each of the oscillator values, returns the result, bitshifted twice to the right
 }
 
 void loop(){
-audioHook();
+  audioHook();
 }
 
 char buttonVal() {//returns any valid button press 0-15, -1 if multiple/none
@@ -334,19 +313,15 @@ void buttonsManager(char pressed){
         pollTimer--;
       }
   } else {
-    //noteOne.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-    //noteTwo.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-    //noteThree.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-    //noteFour.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
-    //noteFive.noteFreq.setTable(waveTables[buttons[BUTT_A]]);
     if (activePoll/noisePoll > 0) {
       switch (activeButton){//cycling actions
         case BUTT_A://osctog
-          if (buttons[BUTT_A] < 4){
+          if (buttons[BUTT_A] < 3){
             buttons[BUTT_A]++;
           } else {
             buttons[BUTT_A]=0;
           }
+          button_q = true;
           break;
         case BUTT_B:
           break;
@@ -453,80 +428,43 @@ Q16n16 note(uint16_t val) {
   //  noteCode = 1000;
   //}
   switch(val & 0xFF){
-  case 0x5E:
-    return ((Q16n16) 17146184); //C1
-  case 0x3B:
-    return ((Q16n16) 18165268); //C1#
-  case 0x4B:
-    return ((Q16n16) 19245302); //D1
-  case 0x5F:
-    return ((Q16n16) 20390216); //D1#
-  case 0x38:
-    return ((Q16n16) 21602632); //E1
-  case 0x49:
-    return ((Q16n16) 22887137); //F1
-  case 0x67:
-    return ((Q16n16) 24247665); //F1#
-  case 0x4D:
-    return ((Q16n16) 25690112); //G1
-  case 0x4A:
-    return ((Q16n16) 27217101); //G1#
-  case 0x36:
-    return ((Q16n16) 28835840); //A1
-  case 0x37:
-    return ((Q16n16) 30550262); //A1#
-  case 0x55:
-    return ((Q16n16) 32366920); //B1
-  case 0x5D:
-    return ((Q16n16) 34291712); //C2
-  case 0x56:
-    return ((Q16n16) 36331192); //C2#
-  case 0x46:
-    return ((Q16n16) 38491259); //D2
-  case 0x35:
-    return ((Q16n16) 40779776); //D2#
-  case 0x34:
-    return ((Q16n16) 43204608); //E2
-  case 0x52:
-    return ((Q16n16) 45774275); //F2
-  case 0x59:
-    return ((Q16n16) 48495985); //F2#
-  case 0x43:
-    return ((Q16n16) 51379569); //G2
-  case 0x44:
-    return ((Q16n16) 54434857); //G2#
-  case 0x62:
-    return ((Q16n16) 57671680); //A2
-  case 0x33:
-    return ((Q16n16) 61101179); //A2#
-  case 0x45:
-    return ((Q16n16) 64734495); //B2
-  case 0x54:
-    return ((Q16n16) 68583424); //C3
-  case 0x58:
-    return ((Q16n16) 72661729); //C3#
-  case 0x53:
-    return ((Q16n16) 76982518); //D3
-  case 0x61:
-    return ((Q16n16) 81560207); //D3#
-  case 0x32:
-    return ((Q16n16) 86409871); //E3
-  case 0x57:
-    return ((Q16n16) 91547894); //F3
-  case 0x63:
-    return ((Q16n16) 96991969); //F3#
-  case 0x5A:
-    return ((Q16n16) 102759137); //G3
-  case 0x41:
-    return ((Q16n16) 108869714); //G3#
-  case 0x40:
-    return ((Q16n16) 115343360); //A3
-  case 0x31:
-    return ((Q16n16) 122202358); //A3#
-  case 0x51:
-    return ((Q16n16) 129468334); //B3
-  case 0x1D:
-    return ((Q16n16) 137166848); //C4
+  case 0x5E: return ((Q16n16) 17146184); //C1
+  case 0x3B: return ((Q16n16) 18165268); //C1#
+  case 0x4B: return ((Q16n16) 19245302); //D1
+  case 0x5F: return ((Q16n16) 20390216); //D1#
+  case 0x38: return ((Q16n16) 21602632); //E1
+  case 0x49: return ((Q16n16) 22887137); //F1
+  case 0x67: return ((Q16n16) 24247665); //F1#
+  case 0x4D: return ((Q16n16) 25690112); //G1
+  case 0x4A: return ((Q16n16) 27217101); //G1#
+  case 0x36: return ((Q16n16) 28835840); //A1
+  case 0x37: return ((Q16n16) 30550262); //A1#
+  case 0x55: return ((Q16n16) 32366920); //B1
+  case 0x5D: return ((Q16n16) 34291712); //C2
+  case 0x56: return ((Q16n16) 36331192); //C2#
+  case 0x46: return ((Q16n16) 38491259); //D2
+  case 0x35: return ((Q16n16) 40779776); //D2#
+  case 0x34: return ((Q16n16) 43204608); //E2
+  case 0x52: return ((Q16n16) 45774275); //F2
+  case 0x59: return ((Q16n16) 48495985); //F2#
+  case 0x43: return ((Q16n16) 51379569); //G2
+  case 0x44: return ((Q16n16) 54434857); //G2#
+  case 0x62: return ((Q16n16) 57671680); //A2
+  case 0x33: return ((Q16n16) 61101179); //A2#
+  case 0x45: return ((Q16n16) 64734495); //B2
+  case 0x54: return ((Q16n16) 68583424); //C3
+  case 0x58: return ((Q16n16) 72661729); //C3#
+  case 0x53: return ((Q16n16) 76982518); //D3
+  case 0x61: return ((Q16n16) 81560207); //D3#
+  case 0x32: return ((Q16n16) 86409871); //E3
+  case 0x57: return ((Q16n16) 91547894); //F3
+  case 0x63: return ((Q16n16) 96991969); //F3#
+  case 0x5A: return ((Q16n16) 102759137); //G3
+  case 0x41: return ((Q16n16) 108869714); //G3#
+  case 0x40: return ((Q16n16) 115343360); //A3
+  case 0x31: return ((Q16n16) 122202358); //A3#
+  case 0x51: return ((Q16n16) 129468334); //B3
+  case 0x1D: return ((Q16n16) 137166848); //C4
   default://to avoid compiler warning
     return 0;
   }
