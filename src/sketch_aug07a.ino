@@ -93,13 +93,12 @@
 #define DIO 2
 
 struct Note {
-  float noteFreq = 0;
+  Q16n16 noteFreq = 0;
 //  NoteEnvelope atkDec = new NoteEnvelope(CONTROL_RATE);
 };
 
-
-int note(uint16_t);
-float findFreq(int);
+Q16n16 note(uint16_t);
+//float findFreq(int);
 char buttonVal();
 void buttonsManager(char);
 
@@ -184,58 +183,60 @@ void setup()
 }
 
 void updateControl(){
-  osc1[buttons[BUTT_A]].setFreq(noteOne.noteFreq);
-  osc2[buttons[BUTT_A]].setFreq(noteTwo.noteFreq);
-  osc3[buttons[BUTT_A]].setFreq(noteThree.noteFreq);
-  osc4[buttons[BUTT_A]].setFreq(noteFour.noteFreq);
-  osc5[buttons[BUTT_A]].setFreq(noteFive.noteFreq);
+  osc1[buttons[BUTT_A]].setFreq_Q16n16(noteOne.noteFreq);
+  osc2[buttons[BUTT_A]].setFreq_Q16n16(noteTwo.noteFreq);
+  osc3[buttons[BUTT_A]].setFreq_Q16n16(noteThree.noteFreq);
+  osc4[buttons[BUTT_A]].setFreq_Q16n16(noteFour.noteFreq);
+  osc5[buttons[BUTT_A]].setFreq_Q16n16(noteFive.noteFreq);
   //noteOne.atkDec.nextVal();
   //noteTwo.atkDec.nextVal();
   //noteThree.atkDec.nextVal();
   //noteFour.atkDec.nextVal();
   //noteFive.atkDec.nextVal();
-  
+
   if (display.update() && activeButton != display_btn) {
       display_btn = activeButton;
       display.showNumberDec(display_btn, true);
   }
   if( keyboard.available() ) {//keyb read function
-  c = keyboard.read(); // read the next key
-  if( c > 0 ) {
-      int note_val = note(c);//note_val: 4 digits, 0xxx vs 1xxx --> key is on or off (key == xxx)
-      if(note_val < 1000) {
-        if (findFreq(note_val) == noteOne.noteFreq 
-        || findFreq(note_val) == noteTwo.noteFreq 
-        || findFreq(note_val) == noteThree.noteFreq 
-        || findFreq(note_val) == noteFour.noteFreq
-        || findFreq(note_val) == noteFive.noteFreq){
+    c = keyboard.read(); // read the next key
+    if( c > 0 ) {
+      Q16n16 note_val = note(c);
+      if(c < 1000) {
+        if (note_val == noteOne.noteFreq
+        || note_val == noteTwo.noteFreq
+        || note_val == noteThree.noteFreq
+        || note_val == noteFour.noteFreq
+        || note_val == noteFive.noteFreq){
 
         } else if(noteOne.noteFreq==0){//initialize a new key press
-          noteOne.noteFreq = findFreq(note_val);
+        noteOne.noteFreq = note_val;
           //noteOne.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
         } else if(noteTwo.noteFreq==0){
-          noteTwo.noteFreq = findFreq(note_val);
+          noteTwo.noteFreq = note_val;
           //noteTwo.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
         } else if(noteThree.noteFreq==0){
-          noteThree.noteFreq = findFreq(note_val);
+          noteThree.noteFreq = note_val;
           //noteThree.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
         } else if(noteFour.noteFreq==0){
-          noteFour.noteFreq = findFreq(note_val);
+          noteFour.noteFreq = note_val;
           //noteFour.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
         } else if(noteFive.noteFreq==0){
-          noteFive.noteFreq = findFreq(note_val);
+          noteFive.noteFreq = note_val;
           //noteFive.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
         }
-      } if(findFreq(note_val - 1000)==noteOne.noteFreq){//finish a key press
-        noteOne.noteFreq = 0;
-      } if(findFreq(note_val - 1000)==noteTwo.noteFreq){
-        noteTwo.noteFreq = 0;
-      } if(findFreq(note_val - 1000)==noteThree.noteFreq){
-        noteThree.noteFreq = 0;
-      } if(findFreq(note_val - 1000)==noteFour.noteFreq){
-        noteFour.noteFreq = 0;
-      } if(findFreq(note_val - 1000)==noteFive.noteFreq){
-        noteFive.noteFreq = 0;
+      } else {
+        if(note_val==noteOne.noteFreq){//finish a key press
+          noteOne.noteFreq = 0;
+        } if(note_val==noteTwo.noteFreq){
+          noteTwo.noteFreq = 0;
+        } if(note_val==noteThree.noteFreq){
+          noteThree.noteFreq = 0;
+        } if(note_val==noteFour.noteFreq){
+          noteFour.noteFreq = 0;
+        } if(note_val==noteFive.noteFreq){
+          noteFive.noteFreq = 0;
+        }
       }
     }
   }
@@ -244,7 +245,7 @@ void updateControl(){
 
 int updateAudio(){
     int note1 = osc1[buttons[BUTT_A]].next();
-    //int envl1 = 
+    //int envl1 =
     //int note2 = osc2[buttons[BUTT_A]].next();
     //int note3 = osc3[buttons[BUTT_A]].next();
     //int note4 = osc4[buttons[BUTT_A]].next();
@@ -272,7 +273,7 @@ char buttonVal() {//returns any valid button press 0-15, -1 if multiple/none
       }
     }else if (digitalRead(i) && state>0){
       return BUTT_NONE;
-    } 
+    }
   }
   switch (state){
     case 0:
@@ -446,167 +447,87 @@ void buttonsManager(char pressed){
   }
 }
 
-int note(uint16_t val) {
-  int noteCode = 0;
-  if(val > 999) {
-    noteCode = 1000;
-  }
+Q16n16 note(uint16_t val) {
+  //int noteCode = 0;
+  //if(val > 999) {
+  //  noteCode = 1000;
+  //}
   switch(val & 0xFF){
-    case 0x5E:
-      return (noteCode+110);//C1
-    case 0x3B:
-      return (noteCode+111);//C1#
-    case 0x4B:
-      return (noteCode+120);//D1
-    case 0x5F:
-      return (noteCode+121);//D1#
-    case 0x38:
-      return (noteCode+130);//E1
-    case 0x49:
-      return (noteCode+140);//F1
-    case 0x67:
-      return (noteCode+141);//F1#
-    case 0x4D:
-      return (noteCode+150);//G1
-    case 0x4A:
-      return (noteCode+151);//G1#
-    case 0x36:
-      return (noteCode+160);//A1
-    case 0x37:
-      return (noteCode+161);//A1#
-    case 0x55:
-      return (noteCode+170);//B1
-    case 0x5D:
-      return (noteCode+210);//C2
-    case 0x56:
-      return (noteCode+211);//C2#
-    case 0x46:
-      return (noteCode+220);//D2
-    case 0x35:
-      return (noteCode+221);//D2#
-    case 0x34:
-      return (noteCode+230);//E2
-    case 0x52:
-      return (noteCode+240);//F2
-    case 0x59:
-      return (noteCode+241);//F2#
-    case 0x43:
-      return (noteCode+250);//G2
-    case 0x44:
-      return (noteCode+251);//G2#
-    case 0x62:
-      return (noteCode+260);//A2
-    case 0x33:
-      return (noteCode+261);//A2#
-    case 0x45:
-      return (noteCode+270);//B2
-    case 0x54:
-      return (noteCode+310);//C3
-    case 0x58:
-      return (noteCode+311);//C3#
-    case 0x53:
-      return (noteCode+320);//D3
-    case 0x61:
-      return (noteCode+321);//D3#
-    case 0x32:
-      return (noteCode+330);//E3
-    case 0x57:
-      return (noteCode+340);//F3
-    case 0x63:
-      return (noteCode+341);//F3#
-    case 0x5A:
-      return (noteCode+350);//G3
-    case 0x41:
-      return (noteCode+351);//G3#
-    case 0x40:
-      return (noteCode+360);//A3
-    case 0x31:
-      return (noteCode+361);//A3#
-    case 0x51:
-      return (noteCode+370);//B3
-    case 0x1D:
-      return (noteCode+410);//C4
-    default://to avoid compiler warning
-      return 0;
+  case 0x5E:
+    return ((Q16n16) 17146184); //C1
+  case 0x3B:
+    return ((Q16n16) 18165268); //C1#
+  case 0x4B:
+    return ((Q16n16) 19245302); //D1
+  case 0x5F:
+    return ((Q16n16) 20390216); //D1#
+  case 0x38:
+    return ((Q16n16) 21602632); //E1
+  case 0x49:
+    return ((Q16n16) 22887137); //F1
+  case 0x67:
+    return ((Q16n16) 24247665); //F1#
+  case 0x4D:
+    return ((Q16n16) 25690112); //G1
+  case 0x4A:
+    return ((Q16n16) 27217101); //G1#
+  case 0x36:
+    return ((Q16n16) 28835840); //A1
+  case 0x37:
+    return ((Q16n16) 30550262); //A1#
+  case 0x55:
+    return ((Q16n16) 32366920); //B1
+  case 0x5D:
+    return ((Q16n16) 34291712); //C2
+  case 0x56:
+    return ((Q16n16) 36331192); //C2#
+  case 0x46:
+    return ((Q16n16) 38491259); //D2
+  case 0x35:
+    return ((Q16n16) 40779776); //D2#
+  case 0x34:
+    return ((Q16n16) 43204608); //E2
+  case 0x52:
+    return ((Q16n16) 45774275); //F2
+  case 0x59:
+    return ((Q16n16) 48495985); //F2#
+  case 0x43:
+    return ((Q16n16) 51379569); //G2
+  case 0x44:
+    return ((Q16n16) 54434857); //G2#
+  case 0x62:
+    return ((Q16n16) 57671680); //A2
+  case 0x33:
+    return ((Q16n16) 61101179); //A2#
+  case 0x45:
+    return ((Q16n16) 64734495); //B2
+  case 0x54:
+    return ((Q16n16) 68583424); //C3
+  case 0x58:
+    return ((Q16n16) 72661729); //C3#
+  case 0x53:
+    return ((Q16n16) 76982518); //D3
+  case 0x61:
+    return ((Q16n16) 81560207); //D3#
+  case 0x32:
+    return ((Q16n16) 86409871); //E3
+  case 0x57:
+    return ((Q16n16) 91547894); //F3
+  case 0x63:
+    return ((Q16n16) 96991969); //F3#
+  case 0x5A:
+    return ((Q16n16) 102759137); //G3
+  case 0x41:
+    return ((Q16n16) 108869714); //G3#
+  case 0x40:
+    return ((Q16n16) 115343360); //A3
+  case 0x31:
+    return ((Q16n16) 122202358); //A3#
+  case 0x51:
+    return ((Q16n16) 129468334); //B3
+  case 0x1D:
+    return ((Q16n16) 137166848); //C4
+  default://to avoid compiler warning
+    return 0;
   }
 }
-
-float findFreq(int note_val){
-  switch(note_val) {
-    case 110:
-      return(261.626);
-    case 111:
-      return(277.183);
-    case 120:
-      return(293.665);
-    case 121:
-      return(311.127);
-    case 130:
-      return(329.628);
-    case 140:
-      return(349.228);
-    case 141:
-      return(369.994);
-    case 150:
-      return(391.995);
-    case 151:
-      return(415.305);
-    case 160:
-      return(440);
-    case 161:
-      return(466.164);
-    case 170:
-      return(493.883);
-    case 210:
-      return(523.251);
-    case 211:
-      return(554.365);
-    case 220:
-      return(587.33);
-    case 221:
-      return(622.254);
-    case 230:
-      return(659.255);
-    case 240:
-      return(698.456);
-    case 241:
-      return(739.989);
-    case 250:
-      return(783.991);
-    case 251:
-      return(830.609);
-    case 260:
-      return(880);
-    case 261:
-      return(932.328);
-    case 270:
-      return(987.767);
-    case 310:
-      return(1046.502);
-    case 311:
-      return(1108.731);
-    case 320:
-      return(1174.659);
-    case 321:
-      return(1244.508);
-    case 330:
-      return(1318.51);
-    case 340:
-      return(1396.913);
-    case 341:
-      return(1479.978);
-    case 350:
-      return(1567.982);
-    case 351:
-      return(1661.219);
-    case 360:
-      return(1760);
-    case 361:
-      return(1864.655);
-    case 370:
-      return(1975.533);
-    case 410:
-      return(2093.005);
-    default://to avoid compiler warning
-      return 0;
-  } }
