@@ -60,6 +60,8 @@
 #include <PS2KeyCode.h>
 #include <PS2KeyTable.h>
 
+//#include "voice.h"
+
 #define DATAPIN 4
 #define IRQPIN  3
 #define AUDIOUT 9
@@ -92,6 +94,7 @@
 
 struct Note {
   Q16n16 noteFreq = 0;
+  Oscil <2048, AUDIO_RATE> osc;
 //  NoteEnvelope atkDec = new NoteEnvelope(CONTROL_RATE);
 };
 
@@ -99,13 +102,10 @@ Q16n16 note(uint16_t);
 char buttonVal();
 void buttonsManager(char);
 
-Oscil <2048, AUDIO_RATE> osc1;
-Oscil <2048, AUDIO_RATE> osc2;
-Oscil <2048, AUDIO_RATE> osc3;
-Oscil <2048, AUDIO_RATE> osc4;
-Oscil <2048, AUDIO_RATE> osc5;
-
-const int8_t* waveTables[4] = {SIN2048_DATA, SAW2048_DATA, TRIANGLE2048_DATA, SQUARE_NO_ALIAS_2048_DATA};
+const int8_t* waveTables[4] = {SIN2048_DATA,
+                               SAW2048_DATA,
+                               TRIANGLE2048_DATA,
+                               SQUARE_NO_ALIAS_2048_DATA};
 
         //Cycle Bounds:3,0,1,1,1, 0,0,1,1,1, 3,1,1, 3,1,1
         //Button Label:A,B,C,D,E, F,G,H,I,J, K,L,M, N,O,P
@@ -144,24 +144,19 @@ void setup()
   display.setBrightness(0x0a);
   display.clear();
   startMozzi(CONTROL_RATE);
-  osc1.setTable(SIN2048_DATA);
-  osc2.setTable(SIN2048_DATA);
-  osc3.setTable(SIN2048_DATA);
-  osc4.setTable(SIN2048_DATA);
-  osc5.setTable(SIN2048_DATA);
+  noteOne.osc.setTable(SIN2048_DATA);
+  noteTwo.osc.setTable(SIN2048_DATA);
+  noteThree.osc.setTable(SIN2048_DATA);
+  noteFour.osc.setTable(SIN2048_DATA);
+  noteFive.osc.setTable(SIN2048_DATA);
 }
 
 void updateControl(){
-  osc1.setFreq_Q16n16(noteOne.noteFreq);
-  osc2.setFreq_Q16n16(noteTwo.noteFreq);
-  osc3.setFreq_Q16n16(noteThree.noteFreq);
-  osc4.setFreq_Q16n16(noteFour.noteFreq);
-  osc5.setFreq_Q16n16(noteFive.noteFreq);
-  //noteOne.atkDec.nextVal();
-  //noteTwo.atkDec.nextVal();
-  //noteThree.atkDec.nextVal();
-  //noteFour.atkDec.nextVal();
-  //noteFive.atkDec.nextVal();
+  noteOne.osc.setFreq_Q16n16(noteOne.noteFreq);
+  noteTwo.osc.setFreq_Q16n16(noteTwo.noteFreq);
+  noteThree.osc.setFreq_Q16n16(noteThree.noteFreq);
+  noteFour.osc.setFreq_Q16n16(noteFour.noteFreq);
+  noteFive.osc.setFreq_Q16n16(noteFive.noteFreq);
 
   if (display.update()) {
     if (activeButton != display_btn) {
@@ -215,21 +210,21 @@ void updateControl(){
   }
   buttonsManager(buttonVal());
   if (button_q) {
-    osc1.setTable(waveTables[buttons[BUTT_A]]);
-    osc2.setTable(waveTables[buttons[BUTT_A]]);
-    osc3.setTable(waveTables[buttons[BUTT_A]]);
-    osc4.setTable(waveTables[buttons[BUTT_A]]);
-    osc5.setTable(waveTables[buttons[BUTT_A]]);
+    noteOne.osc.setTable(waveTables[buttons[BUTT_A]]);
+    noteTwo.osc.setTable(waveTables[buttons[BUTT_A]]);
+    noteThree.osc.setTable(waveTables[buttons[BUTT_A]]);
+    noteFour.osc.setTable(waveTables[buttons[BUTT_A]]);
+    noteFive.osc.setTable(waveTables[buttons[BUTT_A]]);
     button_q = false;
   }
 }
 
 int updateAudio(){
-  int8_t note1 = osc1.next();
-  int8_t note2 = osc2.next();
-  int8_t note3 = osc3.next();
-  int8_t note4 = osc4.next();
-  int8_t note5 = osc5.next();
+  int8_t note1 = noteOne.osc.next();
+  int8_t note2 = noteTwo.osc.next();
+  int8_t note3 = noteThree.osc.next();
+  int8_t note4 = noteFour.osc.next();
+  int8_t note5 = noteFive.osc.next();
   return ((note1+note2+note3+note4+note5)>>2);
   //adds each of the oscillator values, returns the result, bitshifted twice to the right
 }
@@ -313,7 +308,7 @@ void buttonsManager(char pressed){
         pollTimer--;
       }
   } else {
-    if (activePoll/noisePoll > 0) {
+    if (activePoll > noisePoll) {
       switch (activeButton){//cycling actions
         case BUTT_A://osctog
           if (buttons[BUTT_A] < 3){
