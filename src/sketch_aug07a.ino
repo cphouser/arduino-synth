@@ -60,17 +60,17 @@
 #include <PS2KeyCode.h>
 #include <PS2KeyTable.h>
 
-//#include "voice.h"
+#include "voice.h"
 
 #define DATAPIN 4
 #define IRQPIN  3
 #define AUDIOUT 9
 #define POT1 0
-#define POT2 1
+#define POT2 5
 #define POT3 2
-#define POT4 3
-#define POT5 4
-#define POT6 5
+#define POT4 1
+#define POT5 3
+#define POT6 4
 #define BUTT_A 0
 #define BUTT_B 1
 #define BUTT_C 2
@@ -92,20 +92,9 @@
 #define DIO 2
 #define CONTROL_RATE 128
 
-struct Note {
-  Q16n16 noteFreq = 0;
-  Oscil <2048, AUDIO_RATE> osc;
-//  NoteEnvelope atkDec = new NoteEnvelope(CONTROL_RATE);
-};
-
-Q16n16 note(uint16_t);
+Q16n16 note(uint8_t);
 char buttonVal();
 void buttonsManager(char);
-
-const int8_t* waveTables[4] = {SIN2048_DATA,
-                               SAW2048_DATA,
-                               TRIANGLE2048_DATA,
-                               SQUARE_NO_ALIAS_2048_DATA};
 
         //Cycle Bounds:3,0,1,1,1, 0,0,1,1,1, 3,1,1, 3,1,1
         //Button Label:A,B,C,D,E, F,G,H,I,J, K,L,M, N,O,P
@@ -115,12 +104,14 @@ bool button_q = false;
 char pollTimer = 0;
 byte activePoll = 0;//countdown timer 64-0 (1seconds) till last button can be pressed again
 byte noisePoll = 0;
-uint8_t display_btn;
-Note noteOne;
-Note noteTwo;
-Note noteThree;
-Note noteFour;
-Note noteFive;
+bool display_switch = true;
+
+//Voice voice_arr [5];
+Voice voice_1(CONTROL_RATE);
+Voice voice_2(CONTROL_RATE);
+Voice voice_3(CONTROL_RATE);
+Voice voice_4(CONTROL_RATE);
+Voice voice_5(CONTROL_RATE);
 
 uint16_t c;
 PS2KeyAdvanced keyboard;
@@ -144,87 +135,76 @@ void setup()
   display.setBrightness(0x0a);
   display.clear();
   startMozzi(CONTROL_RATE);
-  noteOne.osc.setTable(SIN2048_DATA);
-  noteTwo.osc.setTable(SIN2048_DATA);
-  noteThree.osc.setTable(SIN2048_DATA);
-  noteFour.osc.setTable(SIN2048_DATA);
-  noteFive.osc.setTable(SIN2048_DATA);
 }
 
 void updateControl(){
-  noteOne.osc.setFreq_Q16n16(noteOne.noteFreq);
-  noteTwo.osc.setFreq_Q16n16(noteTwo.noteFreq);
-  noteThree.osc.setFreq_Q16n16(noteThree.noteFreq);
-  noteFour.osc.setFreq_Q16n16(noteFour.noteFreq);
-  noteFive.osc.setFreq_Q16n16(noteFive.noteFreq);
-
   if (display.update()) {
-    if (activeButton != display_btn) {
-      display_btn = activeButton;
-      display.showNumberDec(display_btn, true);
+    if (display_switch) {
+      display.showNumberDec(mozziAnalogRead(POT6));
     } else {
       display.setSegments(buttons, 4);
     }
   }
-  if( keyboard.available() ) {//keyb read function
-    c = keyboard.read(); // read the next key
-    if( c > 0 ) {
-      Q16n16 note_val = note(c);
-      if(c < 1000) {
-        if (note_val == noteOne.noteFreq
-        || note_val == noteTwo.noteFreq
-        || note_val == noteThree.noteFreq
-        || note_val == noteFour.noteFreq
-        || note_val == noteFive.noteFreq){
-
-        } else if(noteOne.noteFreq==0){//initialize a new key press
-        noteOne.noteFreq = note_val;
-          //noteOne.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
-        } else if(noteTwo.noteFreq==0){
-          noteTwo.noteFreq = note_val;
-          //noteTwo.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
-        } else if(noteThree.noteFreq==0){
-          noteThree.noteFreq = note_val;
-          //noteThree.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
-        } else if(noteFour.noteFreq==0){
-          noteFour.noteFreq = note_val;
-          //noteFour.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
-        } else if(noteFive.noteFreq==0){
-          noteFive.noteFreq = note_val;
-          //noteFive.atkDec.instantiateEnv(buttons[BUTT_K],buttons[BUTT_N]);
-        }
+  if (keyboard.available()) {//keyb read function
+    c = keyboard.read(); //read the next key
+    if ( c > 0 ) {
+      uint8_t key = c & 0xFF;
+      //Q16n16 note_val = note(c & 0xFF);
+      if (c < 1000) {
+        uint16_t attack = mozziAnalogRead(POT1) << 1;
+        uint16_t decay = mozziAnalogRead(POT2) << 1;
+        if ((voice_1.v_key == key)
+            || (voice_2.v_key == key)
+            || (voice_3.v_key == key)
+            || (voice_4.v_key == key)
+            || (voice_5.v_key == key)) {}
+        //initialize a new key press
+        else if (voice_1.v_key==0)
+          voice_1.on(key, attack, decay);
+        else if (voice_2.v_key==0)
+          voice_2.on(key, attack, decay);
+        else if (voice_3.v_key==0)
+          voice_3.on(key, attack, decay);
+        else if (voice_4.v_key==0)
+          voice_4.on(key, attack, decay);
+        else if (voice_5.v_key==0)
+          voice_5.on(key, attack, decay);
       } else {
-        if(note_val==noteOne.noteFreq){//finish a key press
-          noteOne.noteFreq = 0;
-        } if(note_val==noteTwo.noteFreq){
-          noteTwo.noteFreq = 0;
-        } if(note_val==noteThree.noteFreq){
-          noteThree.noteFreq = 0;
-        } if(note_val==noteFour.noteFreq){
-          noteFour.noteFreq = 0;
-        } if(note_val==noteFive.noteFreq){
-          noteFive.noteFreq = 0;
-        }
+        if (key==voice_1.v_key)//finish a key press
+          voice_1.off();
+        if (key==voice_2.v_key)
+          voice_2.off();
+        if (key==voice_3.v_key)
+          voice_3.off();
+        if (key==voice_4.v_key)
+          voice_4.off();
+        if (key==voice_5.v_key)
+          voice_5.off();
       }
     }
   }
+  voice_1.update();
+  voice_2.update();
+  voice_3.update();
+  voice_4.update();
+  voice_5.update();
   buttonsManager(buttonVal());
   if (button_q) {
-    noteOne.osc.setTable(waveTables[buttons[BUTT_A]]);
-    noteTwo.osc.setTable(waveTables[buttons[BUTT_A]]);
-    noteThree.osc.setTable(waveTables[buttons[BUTT_A]]);
-    noteFour.osc.setTable(waveTables[buttons[BUTT_A]]);
-    noteFive.osc.setTable(waveTables[buttons[BUTT_A]]);
+    voice_1.setTable(buttons[BUTT_A]);
+    voice_2.setTable(buttons[BUTT_A]);
+    voice_3.setTable(buttons[BUTT_A]);
+    voice_4.setTable(buttons[BUTT_A]);
+    voice_5.setTable(buttons[BUTT_A]);
     button_q = false;
   }
 }
 
 int updateAudio(){
-  int8_t note1 = noteOne.osc.next();
-  int8_t note2 = noteTwo.osc.next();
-  int8_t note3 = noteThree.osc.next();
-  int8_t note4 = noteFour.osc.next();
-  int8_t note5 = noteFive.osc.next();
+  int8_t note1 = voice_1.next();
+  int8_t note2 = voice_2.next();
+  int8_t note3 = voice_3.next();
+  int8_t note4 = voice_4.next();
+  int8_t note5 = voice_5.next();
   return ((note1+note2+note3+note4+note5)>>2);
   //adds each of the oscillator values, returns the result, bitshifted twice to the right
 }
@@ -417,50 +397,3 @@ void buttonsManager(char pressed){
   }
 }
 
-Q16n16 note(uint16_t val) {
-  //int noteCode = 0;
-  //if(val > 999) {
-  //  noteCode = 1000;
-  //}
-  switch(val & 0xFF){
-  case 0x5E: return ((Q16n16) 17146184); //C1
-  case 0x3B: return ((Q16n16) 18165268); //C1#
-  case 0x4B: return ((Q16n16) 19245302); //D1
-  case 0x5F: return ((Q16n16) 20390216); //D1#
-  case 0x38: return ((Q16n16) 21602632); //E1
-  case 0x49: return ((Q16n16) 22887137); //F1
-  case 0x67: return ((Q16n16) 24247665); //F1#
-  case 0x4D: return ((Q16n16) 25690112); //G1
-  case 0x4A: return ((Q16n16) 27217101); //G1#
-  case 0x36: return ((Q16n16) 28835840); //A1
-  case 0x37: return ((Q16n16) 30550262); //A1#
-  case 0x55: return ((Q16n16) 32366920); //B1
-  case 0x5D: return ((Q16n16) 34291712); //C2
-  case 0x56: return ((Q16n16) 36331192); //C2#
-  case 0x46: return ((Q16n16) 38491259); //D2
-  case 0x35: return ((Q16n16) 40779776); //D2#
-  case 0x34: return ((Q16n16) 43204608); //E2
-  case 0x52: return ((Q16n16) 45774275); //F2
-  case 0x59: return ((Q16n16) 48495985); //F2#
-  case 0x43: return ((Q16n16) 51379569); //G2
-  case 0x44: return ((Q16n16) 54434857); //G2#
-  case 0x62: return ((Q16n16) 57671680); //A2
-  case 0x33: return ((Q16n16) 61101179); //A2#
-  case 0x45: return ((Q16n16) 64734495); //B2
-  case 0x54: return ((Q16n16) 68583424); //C3
-  case 0x58: return ((Q16n16) 72661729); //C3#
-  case 0x53: return ((Q16n16) 76982518); //D3
-  case 0x61: return ((Q16n16) 81560207); //D3#
-  case 0x32: return ((Q16n16) 86409871); //E3
-  case 0x57: return ((Q16n16) 91547894); //F3
-  case 0x63: return ((Q16n16) 96991969); //F3#
-  case 0x5A: return ((Q16n16) 102759137); //G3
-  case 0x41: return ((Q16n16) 108869714); //G3#
-  case 0x40: return ((Q16n16) 115343360); //A3
-  case 0x31: return ((Q16n16) 122202358); //A3#
-  case 0x51: return ((Q16n16) 129468334); //B3
-  case 0x1D: return ((Q16n16) 137166848); //C4
-  default://to avoid compiler warning
-    return 0;
-  }
-}
