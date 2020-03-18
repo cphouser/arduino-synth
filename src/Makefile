@@ -71,6 +71,8 @@ LDFLAGS          += -fdiagnostics-color
 CURRENT_DIR       = $(shell basename $(CURDIR))
 OBJDIR            = $(PROJECT_DIR)/build/$(CURRENT_DIR)/$(BOARD_TAG)
 
+OPTIMIZATION_LEVEL = 2
+
 ### path to Arduino.mk, inside the ARDMK_DIR, don't touch.
 include $(ARDMK_DIR)/Arduino.mk
 
