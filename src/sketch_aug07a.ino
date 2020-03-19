@@ -45,10 +45,15 @@
 #define CLK 1
 #define DIO 2
 #define CONTROL_RATE 128
+#define MAX_VOICES 5
 
-uint8_t buttonVal();
-void sampleButtons();
-void changeState(uint8_t new_press);
+static uint8_t buttonVal();
+static void sampleButtons();
+static void changeState(uint8_t new_press);
+static uint8_t countKey(uint16_t key);
+static void readKey();
+static void voice_on(uint8_t key);
+static void voice_off(uint8_t key);
 
 uint8_t control_clock = 0;
 
@@ -57,24 +62,20 @@ uint8_t osc_table = 0;
 uint8_t active_btn = BUTT_NONE;//last button pressed
 uint8_t btn_sample = 0;
 
-//Voice voice_arr [5];
-Voice voice_1(CONTROL_RATE>>2);
-Voice voice_2(CONTROL_RATE>>2);
-Voice voice_3(CONTROL_RATE>>2);
-Voice voice_4(CONTROL_RATE>>2);
-Voice voice_5(CONTROL_RATE>>2);
+Voice voice_arr [MAX_VOICES];
+uint8_t key_arr [MAX_VOICES];
+uint8_t key_count = 0;
+uint8_t last_voice_idx = MAX_VOICES;
 
-//uint16_t c;
 PS2KeyAdvanced keyboard;
 TM1637Display display(CLK, DIO);
 
 bool display_switch = true;
-uint8_t pin_disp[4] = {0,0,0,0};
+//uint8_t pin_disp[4] = {0,0,0,0};
 
 void setup()
 {
   //Serial.begin(115200);
-
   pinMode(AUDIOUT, OUTPUT);
   pinMode(5, INPUT);
   pinMode(6, INPUT);
@@ -95,19 +96,18 @@ void updateControl(){
     //print debug info to led display
     if (display_switch) {
       display_switch = false;
-      //display.showNumberDec(active_btn);
-      //display.showNumberHexEx(buttonVal());
+      //display.showNumberDec(osc_table);
+      //display.showNumberHexEx(cases);
     } else {
       display_switch = true;
-      display.setSegments(pin_disp, 4);
+      //display.setSegments(key_arr, 4);
     }
   }
-  switch (control_clock & 0x03) {
+  switch (control_clock % 4) {
   case 0:
     if (!control_clock && (active_btn != BUTT_NONE)) {
       //register press if sample > 1/8*max (max: 1/4 control rate)
       if (btn_sample > 3) {
-        //pin_disp[0] = active_btn;
         changeState(active_btn);
       }
       btn_sample = 0;
@@ -115,64 +115,27 @@ void updateControl(){
     }
     break;
   case 1:
-    if (keyboard.available()) {//keyb read function
-      uint16_t c = keyboard.read(); //read the next key
-      if ( c > 0 ) {
-        uint8_t key = c & 0xFF;
-        if (c < 1000) {
-          uint16_t attack = mozziAnalogRead(POT1) << 1;
-          uint16_t decay = mozziAnalogRead(POT2) << 1;
-          if ((voice_1.v_key == key)
-              || (voice_2.v_key == key)
-              || (voice_3.v_key == key)
-              || (voice_4.v_key == key)
-              || (voice_5.v_key == key)) {}
-          //initialize a new key press
-          else if (voice_1.v_key==0)
-            voice_1.on(key, attack, decay);
-          else if (voice_2.v_key==0)
-            voice_2.on(key, attack, decay);
-          else if (voice_3.v_key==0)
-            voice_3.on(key, attack, decay);
-          else if (voice_4.v_key==0)
-            voice_4.on(key, attack, decay);
-          else if (voice_5.v_key==0)
-            voice_5.on(key, attack, decay);
-        } else {//finish a key press
-          if (key==voice_1.v_key)
-            voice_1.off();
-          if (key==voice_2.v_key)
-            voice_2.off();
-          if (key==voice_3.v_key)
-            voice_3.off();
-          if (key==voice_4.v_key)
-            voice_4.off();
-          if (key==voice_5.v_key)
-            voice_5.off();
-        }
-      }
-    }
+    readKey();
     break;
   case 2:
     sampleButtons();
     break;
   case 3:
-    voice_1.update();
-    voice_2.update();
-    voice_3.update();
-    voice_4.update();
-    voice_5.update();
+    //updateVoices();
+    while (!voice_arr[last_voice_idx].v_on)
+      ++last_voice_idx;
+    for (uint8_t i = last_voice_idx; i < MAX_VOICES; i++)
+      voice_arr[i].update();
+    break;
   }
   control_clock++;
 }
 
 int updateAudio(){
-  int8_t note1 = voice_1.next();
-  int8_t note2 = voice_2.next();
-  int8_t note3 = voice_3.next();
-  int8_t note4 = voice_4.next();
-  int8_t note5 = voice_5.next();
-  return ((note1+note2+note3+note4+note5)>>2);
+  int8_t out = 0;
+  for (uint8_t i = last_voice_idx; i < MAX_VOICES; i++)
+    out += voice_arr[i].next() >> 2;
+  return out;
   //adds each of the oscillator values, returns the result, bitshifted twice to the right
 }
 
@@ -180,23 +143,76 @@ void loop(){
   audioHook();
 }
 
-void changeState(uint8_t new_press) {
+static void voice_on(uint8_t key) {
+  uint8_t i = MAX_VOICES;
+  uint16_t attack = mozziAnalogRead(POT1) << 1;
+  uint16_t decay = mozziAnalogRead(POT2) << 1;
+  while (--i && voice_arr[i].v_on);
+  last_voice_idx = (i < last_voice_idx) ? i : last_voice_idx;
+  voice_arr[i].on(key, attack, decay); 
+}
+
+static void voice_off(uint8_t key) {
+  uint8_t i = MAX_VOICES;
+  do {
+    if (voice_arr[--i].v_key == key)
+      voice_arr[i].off();
+  } while (i);
+}
+
+static void readKey() {
+  uint16_t c = keyboard.read(); //read the next key
+  if (c) {
+    uint8_t key = countKey(c);
+    if (key) {
+      if (key >> 7)
+        voice_off(key & 0x7F);
+      else
+        voice_on(key);
+    }
+  }
+}
+
+static uint8_t countKey(uint16_t c) {
+  uint8_t key = c & 0xFF;
+  // press or hold event
+  if (c < 1000) {
+    if (key_count) {
+      uint8_t i = key_count;
+      do {
+        if (key_arr[--i] == key)
+          return 0;
+      } while (i);
+    }
+    key_arr[key_count] = key;
+    key_count++;
+    return key;
+  }
+  // release event
+  else {
+    uint8_t i = key_count;
+    do {
+      if (key_arr[--i] == key)
+        key_arr[i] = key_arr[--key_count];
+    } while (i);
+    return key | 0x80;
+  }
+}
+
+static void changeState(uint8_t new_press) {
   switch (new_press) {
   case BUTT_A:
     if (osc_table == 3)
       osc_table = 0;
     else
       osc_table++;
-    voice_1.setTable(osc_table);
-    voice_2.setTable(osc_table);
-    voice_3.setTable(osc_table);
-    voice_4.setTable(osc_table);
-    voice_5.setTable(osc_table);
+    for (uint8_t i = MAX_VOICES; --i; )
+      voice_arr[i].setTable(osc_table);
     break;
   }
 }
 
-void sampleButtons() {
+static void sampleButtons() {
   uint8_t cur_btn = buttonVal();
   if (cur_btn != BUTT_NONE) {
     if (active_btn == BUTT_NONE) {
@@ -211,7 +227,7 @@ void sampleButtons() {
 }
 
 //returns any valid button press 0-15, 255 if multiple/none
-uint8_t buttonVal() {
+static uint8_t buttonVal() {
   uint8_t b_reg = PINB;
   uint8_t d_reg = PIND;
   // state = 0b<pins 13-10><pins 8-5>

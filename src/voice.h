@@ -13,7 +13,7 @@
 #include <mozzi_fixmath.h>
 #include <Arduino.h>
 
-//#define CONTROL_RATE 128
+#define ENV_RATE 32
 
 class Voice {
  public:
@@ -22,7 +22,7 @@ class Voice {
   Q16n16 v_freq;
   uint8_t v_gain;
 
-  Voice(int control_rate);
+  Voice();
   void on(uint8_t key, int attack, int decay);
   void off();
   void setTable(int8_t tab_idx);

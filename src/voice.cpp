@@ -16,7 +16,7 @@ const int8_t* wav_table[] = {SIN2048_DATA,
                             TRIANGLE2048_DATA,
                             SQUARE_NO_ALIAS_2048_DATA};
 
-Voice::Voice(int control_rate):v_env(control_rate) {
+Voice::Voice():v_env(ENV_RATE) {
   v_on = 0;
   v_freq = 0;
   v_key = 0;
