@@ -5,7 +5,7 @@
 
 //#include <inttypes.h>
 #include <Oscil.h>
-#include <Ead.h>
+#include "Ead.h"
 #include <tables/sin2048_int8.h>
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>

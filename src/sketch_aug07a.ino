@@ -67,6 +67,7 @@ uint8_t key_arr [MAX_VOICES];
 uint8_t key_count = 0;
 uint8_t last_voice_idx = MAX_VOICES;
 
+#define PS2_TYPMAT_DISABLE 0xF8
 PS2KeyAdvanced keyboard;
 TM1637Display display(CLK, DIO);
 
@@ -85,25 +86,30 @@ void setup()
   pinMode(11, INPUT);
   pinMode(12, INPUT);
   pinMode(13, INPUT);
-  keyboard.begin( DATAPIN, IRQPIN ); // Configure the keyboard library
+  keyboard.begin(DATAPIN, IRQPIN); // Configure the keyboard library
+  //keyboard.byteCommand(PS2_TYPMAT_DISABLE);
+  //delay(10);
+  //while (keyboard.read());
   display.setBrightness(0x0a);
   display.clear();
   startMozzi(CONTROL_RATE);
 }
 
 void updateControl(){
-  if (display.update()) {
-    //print debug info to led display
-    if (display_switch) {
-      display_switch = false;
-      //display.showNumberDec(osc_table);
-      //display.showNumberHexEx(cases);
-    } else {
-      display_switch = true;
-      //display.setSegments(key_arr, 4);
-    }
-  }
-  switch (control_clock % 4) {
+  //if (display.update()) {
+  //  //print debug info to led display
+  //  if (display_switch) {
+  //    display_switch = false;
+  //    display.showNumberDec(key_count, true);
+  //    //display.showNumberHexEx(cases);
+  //  } else {
+  //    display_switch = true;
+  //    display.showNumberDec(last_voice_idx);
+  //    //display.showNumberHexEx(voice_arr[last_voice_idx].v_on);
+  //    //display.setSegments(key_arr, 4);
+  //  }
+  //}
+  switch (control_clock & 0x03) {
   case 0:
     if (!control_clock && (active_btn != BUTT_NONE)) {
       //register press if sample > 1/8*max (max: 1/4 control rate)
@@ -122,8 +128,8 @@ void updateControl(){
     break;
   case 3:
     //updateVoices();
-    while (!voice_arr[last_voice_idx].v_on)
-      ++last_voice_idx;
+    while (!voice_arr[last_voice_idx].v_on && last_voice_idx < MAX_VOICES)
+      last_voice_idx++;
     for (uint8_t i = last_voice_idx; i < MAX_VOICES; i++)
       voice_arr[i].update();
     break;
@@ -145,7 +151,7 @@ void loop(){
 
 static void voice_on(uint8_t key) {
   uint8_t i = MAX_VOICES;
-  uint16_t attack = mozziAnalogRead(POT1) << 1;
+  uint16_t attack = (mozziAnalogRead(POT1) << 1) + 100;
   uint16_t decay = mozziAnalogRead(POT2) << 1;
   while (--i && voice_arr[i].v_on);
   last_voice_idx = (i < last_voice_idx) ? i : last_voice_idx;

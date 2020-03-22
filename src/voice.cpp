@@ -1,7 +1,7 @@
 
 //#include <inttypes.h>
 #include <Oscil.h>
-#include <Ead.h>
+#include "Ead.h"
 #include <tables/sin2048_int8.h>
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>
@@ -11,10 +11,12 @@
 #include "voice.h"
 #include <Arduino.h>
 
-const int8_t* wav_table[] = {SIN2048_DATA,
+const int8_t* wav_table[] = {
                             SAW2048_DATA,
-                            TRIANGLE2048_DATA,
-                            SQUARE_NO_ALIAS_2048_DATA};
+                            SQUARE_NO_ALIAS_2048_DATA,
+                            SIN2048_DATA,
+                            TRIANGLE2048_DATA
+                            };
 
 Voice::Voice():v_env(ENV_RATE) {
   v_on = 0;
@@ -24,21 +26,27 @@ Voice::Voice():v_env(ENV_RATE) {
 }
 
 void Voice::on(uint8_t key, int attack, int decay) {
-  v_on = 0xFF;
+  v_on = 0x01;
   v_key = key;
   v_freq = keyFreq(key);
   v_osc.setFreq_Q16n16(v_freq);
-  v_env.start(attack, decay);
+  //v_env.start(attack, decay);
+  v_env.set(attack, decay);
+
+  //update();
 }
 
 void Voice::off() {
   v_on = 0;
   v_freq = 0;
   v_key = 0;
+  v_env.start();
 }
 
 void Voice::update() {
-  v_gain = v_env.next();
+  if (v_on)
+    v_gain = v_env.next();
+  //v_on = (v_on << 1) | 0x01;
 }
 
 void Voice::setTable(int8_t tab_idx) {
@@ -46,7 +54,8 @@ void Voice::setTable(int8_t tab_idx) {
 }
 
 int8_t Voice::next() {
-  return (((v_gain*v_osc.next())>>8) & v_on);
+  return (((v_gain*v_osc.next())>>8));
+  //return v_osc.next();
 }
 
 Q16n16 Voice::keyFreq(uint8_t key) {
