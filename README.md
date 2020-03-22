@@ -2,12 +2,25 @@
 
 ## Dependencies
 * Mozzi 1.1.0 [https://github.com/sensorium/Mozzi]
-* PS2Keyboard 1.0.2 [https://github.com/techpaul/PS2KeyAdvanced]
+* PS2KeyAdvanced 1.0.7 [https://github.com/techpaul/PS2KeyAdvanced]
 * TM1637-no-delay [https://github.com/xeroxcat/TM1637-no-delay]
+* Atmega328 board (tested with an Arduino Duemilanove)
+
+## Planned
+#### Disable keyboard typematic input
+There is a PS/2 command (0xF8) which should disable typmatic input (transmit signal only on press and release). Add function for this command or an arbitrary command to PS2KeyAdvanced. Would allow simplified key processing and reduce load.
+
+#### Attack/Release Ramps
+Short ramps on starting/ending a note (separate from pot-envelope which is currently using <Eah.h>) to eliminate the click during those events.
+
+#### Fix <Ead.h> or find another envelope
+The envelope in Ead.h doesn't reset when start() is called. Creates problem when a voice is assigned to a new key.
 
 ## Changelog (vague)
 ### Present
-(3/2020) Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
+(3/2020.2) LED display working and all original work cleaned up. Experimental implementation of attack-decay envelopes added.
+
+(3/2020.1) Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
 
 ### History
 #### 2020
