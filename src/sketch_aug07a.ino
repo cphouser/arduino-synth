@@ -122,7 +122,7 @@ void updateControl(){
     break;
   case 3:
     //updateVoices();
-    while (!voice_arr[last_voice_idx].v_on)
+    while (!voice_arr[last_voice_idx].playing())
       ++last_voice_idx;
     for (uint8_t i = last_voice_idx; i < MAX_VOICES; i++)
       voice_arr[i].update();
@@ -145,9 +145,9 @@ void loop(){
 
 static void voice_on(uint8_t key) {
   uint8_t i = MAX_VOICES;
-  uint16_t attack = mozziAnalogRead(POT1) << 1;
-  uint16_t decay = mozziAnalogRead(POT2) << 1;
-  while (--i && voice_arr[i].v_on);
+  uint16_t attack = mozziAnalogRead(POT1) >> 2;
+  uint16_t decay = mozziAnalogRead(POT2) >> 2;
+  while (--i && voice_arr[i].playing());
   last_voice_idx = (i < last_voice_idx) ? i : last_voice_idx;
   voice_arr[i].on(key, attack, decay); 
 }
