@@ -1,7 +1,7 @@
 
 //#include <inttypes.h>
 #include <Oscil.h>
-#include <ADSR.h>
+#include "ADSR.h"
 #include <tables/sin2048_int8.h>
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>
@@ -17,31 +17,67 @@ const int8_t* wav_table[] = {SIN2048_DATA,
                             SQUARE_NO_ALIAS_2048_DATA};
 
 Voice::Voice() {
-  v_on = 0;
   v_freq = 0;
   v_key = 0;
+  v_env_cache = 0;
   v_osc.setTable(wav_table[0]);
-  v_env.setTimes(1000,1000,65535, 50);
+  v_env.setADLevels(255, 63);
+  v_env_atk_curve = 0;
+  v_env_dec_curve = 0;
 }
 
 void Voice::on(uint8_t key, int attack, int decay) {
-  v_on = 0xFF;
   v_key = key;
   v_freq = keyFreq(key);
   v_osc.setFreq_Q16n16(v_freq);
-  v_env.setADLevels(attack, decay);
+  v_env.setTimes(attack,decay,65535, 50);
+  v_env_cache = 0;
   v_env.noteOn();
 }
 
 void Voice::off() {
-  v_on = 0;
   v_freq = 0;
   v_key = 0;
   v_env.noteOff();
 }
 
-void Voice::update() {
+uint8_t Voice::envNext() {
   v_env.update();
+  v_env_cache = v_env.next();
+  uint8_t env_curve;
+  if (v_env.atk_phase()) {
+    env_curve = v_env_atk_curve;
+  }
+  else {
+    env_curve = v_env_dec_curve;
+  }
+  uint16_t pow_result;
+  switch (env_curve) {
+  case 2:
+    pow_result = ipow(v_env_cache, 2);
+    v_env_cache = pow_result >> 8;
+  case 1:
+    pow_result = ipow(v_env_cache, 2);
+    v_env_cache = pow_result >> 8;
+    break;
+  case 3:
+    pow_result = v_env_cache << 8;
+    v_env_cache = isqrt16(pow_result);
+  case 4:
+    pow_result = v_env_cache << 8;
+    v_env_cache = isqrt16(pow_result);
+  default:
+    break;
+  }
+  return v_env_cache;
+}
+
+void Voice::setAtkCurve(uint8_t mode) {
+  v_env_atk_curve = mode;
+}
+
+void Voice::setDecCurve(uint8_t mode) {
+  v_env_dec_curve = mode;
 }
 
 void Voice::setTable(int8_t tab_idx) {
@@ -49,7 +85,9 @@ void Voice::setTable(int8_t tab_idx) {
 }
 
 int8_t Voice::next() {
-  return (((v_env.next()*v_osc.next())>>8));
+  int8_t dry_out = ((v_env_cache*v_osc.next())>>8);
+  //int8_t lp_out = v_lpf.next(v_osc.next())>>8;
+  return dry_out;
 }
 
 bool Voice::playing() {
