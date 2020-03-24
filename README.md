@@ -10,12 +10,12 @@
 #### Power LED display off separate 5v
 
 #### Separate functions and state for keys, voices and mix
-`
+```
     key_state -> voice_state -> mix_state
 key input-^
   analog input-----^------------^
     button input---^------------^
-`
+```
 ## Changelog (vague)
 ### Present
 #### (3/2020.3)
