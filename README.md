@@ -7,20 +7,25 @@
 * Atmega328 board (tested with an Arduino Duemilanove)
 
 ## Planned
-#### Disable keyboard typematic input
-There is a PS/2 command (0xF8) which should disable typmatic input (transmit signal only on press and release). Add function for this command or an arbitrary command to PS2KeyAdvanced. Would allow simplified key processing and reduce load.
+#### Power LED display off separate 5v
 
-#### Attack/Release Ramps
-Short ramps on starting/ending a note (separate from pot-envelope which is currently using <Eah.h>) to eliminate the click during those events.
-
-#### Fix <Ead.h> or find another envelope
-The envelope in Ead.h doesn't reset when start() is called. Creates problem when a voice is assigned to a new key.
-
+#### Separate functions and state for keys, voices and mix
+`
+    key_state -> voice_state -> mix_state
+key input-^
+  analog input-----^------------^
+    button input---^------------^
+`
 ## Changelog (vague)
 ### Present
-(3/2020.2) LED display working and all original work cleaned up. Experimental implementation of attack-decay envelopes added.
+#### (3/2020.3)
+Attack/Decay envelopes working, definable length and curve. 
 
-(3/2020.1) Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
+#### (3/2020.2) 
+LED display working and all original work cleaned up. Experimental implementation of attack-decay envelopes added.
+
+#### (3/2020.1) 
+Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
 
 ### History
 #### 2020
