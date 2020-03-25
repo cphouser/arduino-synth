@@ -1,7 +1,7 @@
 # Arduino Synth
 The Arduino library and board, as well as the AVR-GCC compiler, allows hobbyists and prototypers to develop efficiently for microcontrollers using C++, a well documented and structured langugage. The Mozzi Sound Library provides an API on this platform for generating a PWM audio signal using sample tables and real time processing routines. This project aims to create a synthesizer which pushes the capabilities of the hardware and can function as a structured template for similar projects. Different components of the system (keyboard input, control input, note rendering, mixing, etc) are implemented as classes, allowing the synthesis routines to be reused with different hardware interfaces or changed separately from the currently defined hardware interface. As the implementation of experimental features is completed (see **planned** section), these classes will be documented for reuse and extendability. 
 
-(Very) unscripted demo of the current status as of 3/24/20: [youtube.com/watch?v=s4Vc9mn1Nbo]
+(Very) unscripted demo of the current status as of 3/24/20: [https://www.youtube.com/watch?v=s4Vc9mn1Nbo]
 
 ## Dependencies
 * Mozzi 1.1.0 [https://github.com/sensorium/Mozzi]
