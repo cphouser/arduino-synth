@@ -1,4 +1,7 @@
 # Arduino Synth
+The Arduino library and board, as well as the AVR-GCC compiler, allows hobbyists and prototypers to develop efficiently for microcontrollers using C++, a well documented and structured langugage. The Mozzi Sound Library provides an API on this platform for generating a PWM audio signal using sample tables and real time processing routines. This project aims to create a synthesizer which pushes the capabilities of the hardware and can function as a structured template for similar projects. Different components of the system (keyboard input, control input, note rendering, mixing, etc) are implemented as classes, allowing the synthesis routines to be reused with different hardware interfaces or changed separately from the currently defined hardware interface. As the implementation of experimental features is completed (see **planned** section), these classes will be documented for reuse and extendability. 
+
+(Very) unscripted demo of the current status as of 3/24/20: [https://www.youtube.com/watch?v=s4Vc9mn1Nbo]
 
 ## Dependencies
 * Mozzi 1.1.0 [https://github.com/sensorium/Mozzi]
@@ -7,20 +10,36 @@
 * Atmega328 board (tested with an Arduino Duemilanove)
 
 ## Planned
-#### Disable keyboard typematic input
-There is a PS/2 command (0xF8) which should disable typmatic input (transmit signal only on press and release). Add function for this command or an arbitrary command to PS2KeyAdvanced. Would allow simplified key processing and reduce load.
+#### Power LED display off separate 5v
+Display is needed for displaying current state set by buttons, currently generates too much noise on audio signal to be useful.
 
-#### Attack/Release Ramps
-Short ramps on starting/ending a note (separate from pot-envelope which is currently using <Eah.h>) to eliminate the click during those events.
+#### Link buttons to mixing parameters for envelopes and filters.
+Separate filtering functions within the mixer class and define interface for toggling and adjusting parameters.
 
-#### Fix <Ead.h> or find another envelope
-The envelope in Ead.h doesn't reset when start() is called. Creates problem when a voice is assigned to a new key.
+#### Separate functions and state for keys, voices and mix (mostly done)
+```
+    key_state -> voice_state -> mix_state
+key input-^
+  analog input-----^------------^
+    button input---^------------^
+```
+#### Monophonic input mode with unison/chorus
+If room 
 
+#### Note pattern record and playback
+If room
+
+#### Less generic project name
 ## Changelog (vague)
 ### Present
-(3/2020.2) LED display working and all original work cleaned up. Experimental implementation of attack-decay envelopes added.
+#### (3/2020.3)
+Attack/Decay envelopes working, definable length and curve. 
 
-(3/2020.1) Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
+#### (3/2020.2) 
+LED display working and all original work cleaned up. Experimental implementation of attack-decay envelopes added.
+
+#### (3/2020.1) 
+Started this project over 3 years ago as an overambitious first Arduino project. Most of the work over this time has been spent adding and troubleshooting I/O hardware. Current work now is refactoring the current I/O code into more structured interfaces. 
 
 ### History
 #### 2020
