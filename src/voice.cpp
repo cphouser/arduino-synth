@@ -86,7 +86,6 @@ void Voice::setTable(int8_t tab_idx) {
 
 int8_t Voice::next() {
   int8_t dry_out = ((v_env_cache*v_osc.next())>>8);
-  //int8_t lp_out = v_lpf.next(v_osc.next())>>8;
   return dry_out;
 }
 
@@ -105,7 +104,7 @@ Q16n16 Voice::keyFreq(uint8_t key) {
   case 0x67: return ((Q16n16) 24247665); //F1#
   case 0x4D: return ((Q16n16) 25690112); //G1
   case 0x4A: return ((Q16n16) 27217101); //G1#
-  case 0x36: return ((Q16n16) 28835840); //A1
+  case 0x36: return ((Q16n16) 28835840); //A1(440)
   case 0x37: return ((Q16n16) 30550262); //A1#
   case 0x55: return ((Q16n16) 32366920); //B1
   case 0x5D: return ((Q16n16) 34291712); //C2

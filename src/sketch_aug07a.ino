@@ -5,6 +5,7 @@
 #include <AudioDelay.h>
 #include <Oscil.h>
 #include <Phasor.h>
+#include <IntMap.h>
 #include <tables/sin2048_int8.h>
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>
@@ -26,24 +27,31 @@
 
 class ctlsig_state {
  public:
-  uint8_t mix_sig;
+ ctlsig_state() : atk_range(0, 1024, 21, 5000)
+    , dec_range(0, 1024, 0, 5000) {}
 
+  uint8_t bitmix_sig;
+  uint8_t bitmix_mix;
+  uint8_t delay_sig;
+  uint8_t delay_mix;
 
   uint16_t atkLen()
-  {
-    return mozziAnalogRead(POT1) << 2;
-  }
+  {return atk_range(mozziAnalogRead(POT1));}
 
   uint16_t decLen()
-  {
-    return mozziAnalogRead(POT2) << 2;
-  }
+  {return dec_range(mozziAnalogRead(POT2));}
+
+  void envNext(uint8_t env_mix)
+  {env_sum = env_mix;}
 
   void update()
   {
-    //mix_state.m_delay.set(mozziAnalogRead(POT4)>>2);
-    mix_sig = mozziAnalogRead(POT3)>>2;
+    bitmix_mix = mozziAnalogRead(POT3)>>2;
+    bitmix_sig = env_sum + (mozziAnalogRead(POT4)>>3);
+    delay_mix = mozziAnalogRead(POT5)>>2;
+    delay_sig = env_sum + (mozziAnalogRead(POT6)>>3);
   }
+
  private:
   enum ANALOG_IN {
     POT1 = 0,
@@ -53,15 +61,16 @@ class ctlsig_state {
     POT5 = 3,
     POT6 = 4,
   };
-
+  IntMap atk_range;
+  IntMap dec_range;
+  uint8_t env_sum;
+  
 
 } ctlsig_state;
 
+
 class voice_state {
  public:
-  uint8_t osc_table = 0;
-  uint8_t atk_curve = 0;//0  1    2    3      4
-  uint8_t dec_curve = 0;//x  x^2  x^4  x^1/4  x^1/2
 
   void on(uint8_t key)
   {
@@ -107,43 +116,69 @@ class voice_state {
 
   void changeTable()
   {
+    osc_table = (osc_table == 3) ? 0 : (osc_table + 1);
     for (uint8_t i = MAX_VOICES; --i; )
       voice_arr[i].setTable(osc_table);
   }
 
+  void changeDecCurve()
+  {dec_curve = (dec_curve == 4) ? 0 : (dec_curve + 1);}
+
+  void changeAtkCurve()
+  {atk_curve = (atk_curve == 4) ? 0 : (atk_curve + 1);}
+
  private:
   uint8_t last_voice_idx = MAX_VOICES;
   Voice voice_arr [MAX_VOICES];
+  uint8_t osc_table = 0;
+  uint8_t atk_curve = 0;//0  1    2    3      4
+  uint8_t dec_curve = 0;//x  x^2  x^4  x^1/4  x^1/2
 
 } voice_state;
 
+
 class mix_state {
  public:
-  uint8_t del_wet = 0;
-
   int8_t next(int8_t dry_mix)
   {
-    int8_t wet_mix = dry_mix & m_env;//m_delay.next(dry_out);
-    return (((del_wet*wet_mix)>>8)
-            + ((((255-del_wet)*dry_mix))>>8));
+    int8_t wet_mix = bitmix(dry_mix, ctlsig_state.bitmix_sig);
+    int8_t dry_2 = mix(dry_mix, wet_mix, ctlsig_state.bitmix_mix);
+    int8_t wet_2 = m_delay.next(dry_2, ctlsig_state.delay_sig);
+    //return bitmix(dry_2, wet_2);
+    return mix(dry_2, wet_2, ctlsig_state.delay_mix);
   }
 
-  void envNext(uint8_t env_mix)
-  {
-    m_env = env_mix;
-  }
-
-  void update()
-  {
-    del_wet = ctlsig_state.mix_sig;
-  }
+  void changeBitmixOp()
+  {bitmix_operation = (bitmix_operation == 4) ? 0 : (bitmix_operation + 1);}
+  
+  void init()
+  {m_delay.set(256);}
 
  private:
-  AudioDelay <512> m_delay;
-  uint8_t m_env = 0;
-  //StateVariable <LOWPASS> lpf;
+  AudioDelay <256> m_delay;
+  uint8_t bitmix_operation = 0;
+
+  static int8_t mix(int8_t dry, int8_t wet, uint8_t mix_amt)
+  {return ((mix_amt*wet)>>8) + (((255-mix_amt)*dry)>>8);}
+
+  int8_t bitmix(int8_t dry, uint8_t signal) {
+    switch (bitmix_operation) {
+    case 0:
+      return dry & signal;
+    case 1:
+      return dry & ~signal;
+    case 2:
+      return dry | signal;
+    case 3:
+      return dry | ~signal;
+    case 4:
+      return dry ^ signal;
+
+    }
+  }
 
 } mix_state;
+
 
 class key_state {
  public:
@@ -202,6 +237,7 @@ class key_state {
     }
   }
 } key_state;
+
 
 class button_state {
  public:
@@ -270,23 +306,15 @@ class button_state {
   {
     switch (new_press) {
     case BUTT_A:
-      if (voice_state.osc_table == 3)
-        voice_state.osc_table = 0;
-      else
-        voice_state.osc_table++;
       voice_state.changeTable();
       break;
+    case BUTT_B:
+      mix_state.changeBitmixOp();
     case BUTT_L:
-      if (voice_state.dec_curve == 4)
-        voice_state.dec_curve = 0;
-      else
-        voice_state.dec_curve++;
+      voice_state.changeDecCurve();
       break;
     case BUTT_O:
-      if (voice_state.atk_curve == 4)
-        voice_state.atk_curve = 0;
-      else
-        voice_state.atk_curve++;
+      voice_state.changeAtkCurve();
       break;
     }
 
@@ -341,6 +369,7 @@ class button_state {
   }
 } button_state;
 
+
 TM1637Display display(CLK, DIO);
 
 bool display_switch = true;
@@ -353,8 +382,10 @@ void setup()
   display.setBrightness(0x0a);
   display.clear();
   key_state.init();
+  mix_state.init();
   startMozzi(CONTROL_RATE);
 }
+
 
 void updateControl()
 {
@@ -366,7 +397,7 @@ void updateControl()
     }
     else {
       ctlsig_state.update();
-      mix_state.update();
+      //mix_state.update();
     }
     break;
   case 1:
@@ -390,11 +421,13 @@ void updateControl()
       //display.setSegments(key_arr, 4);
     }
   }
-  mix_state.envNext(voice_state.envNext());
+  ctlsig_state.envNext(voice_state.envNext());
   control_clock++;
 }
 
+
 int updateAudio() {return mix_state.next(voice_state.mix());}
+
 
 void loop() {audioHook();}
 
