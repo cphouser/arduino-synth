@@ -78,9 +78,12 @@ class voice_state {
     while (--i && voice_arr[i].playing());
     last_voice_idx = (i < last_voice_idx) ? i : last_voice_idx;
 
-    voice_arr[i].on(key, ctlsig_state.atkLen(), ctlsig_state.decLen());
     voice_arr[i].setAtkCurve(atk_curve);
     voice_arr[i].setDecCurve(dec_curve);
+    //set level after curve
+    voice_arr[i].setAtkLevel(atk_level);
+    voice_arr[i].setDecLevel(dec_level);
+    voice_arr[i].on(key, ctlsig_state.atkLen(), ctlsig_state.decLen());
   }
 
   void off(uint8_t key)
@@ -127,12 +130,20 @@ class voice_state {
   void changeAtkCurve()
   {atk_curve = (atk_curve == 4) ? 0 : (atk_curve + 1);}
 
+  void changeDecLevel()
+  {dec_level = (dec_level == 4) ? 0 : (dec_level + 1);}
+
+  void changeAtkLevel()
+  {atk_level = (atk_level == 4) ? 0 : (atk_level + 1);}
+
  private:
   uint8_t last_voice_idx = MAX_VOICES;
   Voice voice_arr [MAX_VOICES];
   uint8_t osc_table = 0;
   uint8_t atk_curve = 0;//0  1    2    3      4
   uint8_t dec_curve = 0;//x  x^2  x^4  x^1/4  x^1/2
+  uint8_t atk_level = 0;//255 127 63 31  15
+  uint8_t dec_level = 0;//15  31  63 127 255
 
 } voice_state;
 
@@ -173,7 +184,7 @@ class mix_state {
       return dry | ~signal;
     case 4:
       return dry ^ signal;
-
+    default: return 0;
     }
   }
 
@@ -310,8 +321,15 @@ class button_state {
       break;
     case BUTT_B:
       mix_state.changeBitmixOp();
+      break;
+    case BUTT_K:
+      voice_state.changeDecLevel();
+      break;
     case BUTT_L:
       voice_state.changeDecCurve();
+      break;
+    case BUTT_N:
+      voice_state.changeAtkLevel();
       break;
     case BUTT_O:
       voice_state.changeAtkCurve();

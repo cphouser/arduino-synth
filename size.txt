@@ -1,10 +1,10 @@
 ----------------
 Device: atmega328p
 
-Program:   18184 bytes (55.5% Full)
+Program:   18270 bytes (55.8% Full)
 (.text + .data + .bootloader)
 
-Data:       1751 bytes (85.5% Full)
+Data:       1763 bytes (86.1% Full)
 (.data + .bss + .noinit)
 
 

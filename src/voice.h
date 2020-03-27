@@ -31,12 +31,16 @@ class Voice {
 
   void setAtkCurve(uint8_t mode);
   void setDecCurve(uint8_t mode);
+  void setAtkLevel(uint8_t level);
+  void setDecLevel(uint8_t level);
  private:
   Oscil <2048, AUDIO_RATE> v_osc;
   ADSR <ENV_RATE, ENV_RATE> v_env;
   uint8_t v_env_cache;
   uint8_t v_env_atk_curve;
   uint8_t v_env_dec_curve;
+  uint8_t v_env_atk_level;
+  uint8_t v_env_dec_level;
 
   Q16n16 keyFreq(uint8_t key);
 };
