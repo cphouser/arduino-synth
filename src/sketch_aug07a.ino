@@ -1,7 +1,5 @@
-
 #include <MozziGuts.h>
 #include <mozzi_fixmath.h>
-//#include <StateVariable.h>
 #include <AudioDelay.h>
 #include <Oscil.h>
 #include <Phasor.h>
@@ -78,11 +76,11 @@ class voice_state {
     while (--i && voice_arr[i].playing());
     last_voice_idx = (i < last_voice_idx) ? i : last_voice_idx;
 
-    voice_arr[i].setAtkCurve(atk_curve);
-    voice_arr[i].setDecCurve(dec_curve);
+    //voice_arr[i].setAtkCurve(atk_curve);
+    //voice_arr[i].setDecCurve(dec_curve);
     //set level after curve
-    voice_arr[i].setAtkLevel(atk_level);
-    voice_arr[i].setDecLevel(dec_level);
+    //voice_arr[i].setAtkLevel(atk_level);
+    //voice_arr[i].setDecLevel(dec_level);
     voice_arr[i].on(key, ctlsig_state.atkLen(), ctlsig_state.decLen());
   }
 
@@ -107,6 +105,8 @@ class voice_state {
   {
     while (!voice_arr[last_voice_idx].playing())
       ++last_voice_idx;
+    for (uint8_t i = last_voice_idx; i < MAX_VOICES; i++)
+      voice_arr[i].envUpdate();
   }
 
   int8_t mix()
@@ -125,25 +125,48 @@ class voice_state {
   }
 
   void changeDecCurve()
-  {dec_curve = (dec_curve == 4) ? 0 : (dec_curve + 1);}
+  {
+    if (dec_curve == 3)
+      dec_curve = 1;
+    else
+      dec_curve++;
+    for (uint8_t i = MAX_VOICES; --i; )
+      voice_arr[i].setDecCurve(dec_curve);
+  }
 
   void changeAtkCurve()
-  {atk_curve = (atk_curve == 4) ? 0 : (atk_curve + 1);}
+  {
+    if (atk_curve == 3)
+      atk_curve = 1;
+    else
+      atk_curve++;
+    for (uint8_t i = MAX_VOICES; --i; )
+      voice_arr[i].setAtkCurve(atk_curve);
+  }
 
   void changeDecLevel()
-  {dec_level = (dec_level == 4) ? 0 : (dec_level + 1);}
+  {
+    dec_level = (dec_level == 4) ? 0 : (dec_level + 1);
+    for (uint8_t i = MAX_VOICES; --i; )
+      voice_arr[i].setDecLevel((16<<dec_level)-1);
+  }
 
   void changeAtkLevel()
-  {atk_level = (atk_level == 4) ? 0 : (atk_level + 1);}
+  {
+    atk_level = (atk_level == 4) ? 0 : (atk_level + 1);
+    for (uint8_t i = MAX_VOICES; --i; )
+      voice_arr[i].setAtkLevel(255>>atk_level);
+  }
 
  private:
   uint8_t last_voice_idx = MAX_VOICES;
   Voice voice_arr [MAX_VOICES];
   uint8_t osc_table = 0;
-  uint8_t atk_curve = 0;//0  1    2    3      4
-  uint8_t dec_curve = 0;//x  x^2  x^4  x^1/4  x^1/2
+  int8_t atk_curve = 1;//1  2    3    -4      -2
+  int8_t dec_curve = 1;//x  x^2  x^3  x^1/4  x^1/2
   uint8_t atk_level = 0;//255 127 63 31  15
   uint8_t dec_level = 0;//15  31  63 127 255
+  //uint8_t env_cache = 0;
 
 } voice_state;
 
@@ -161,7 +184,7 @@ class mix_state {
 
   void changeBitmixOp()
   {bitmix_operation = (bitmix_operation == 4) ? 0 : (bitmix_operation + 1);}
-  
+
   void init()
   {m_delay.set(256);}
 
@@ -395,6 +418,8 @@ bool display_switch = true;
 
 void setup()
 {
+  Serial.begin(9600);
+  Serial.print("ok");
   pinMode(AUDIOUT, OUTPUT);
   button_state.init();
   display.setBrightness(0x0a);
@@ -439,13 +464,18 @@ void updateControl()
       //display.setSegments(key_arr, 4);
     }
   }
-  ctlsig_state.envNext(voice_state.envNext());
+  //ctlsig_state.envNext(voice_state.env_cache);
   control_clock++;
 }
 
 
-int updateAudio() {return mix_state.next(voice_state.mix());}
+int updateAudio()
+{
+  ctlsig_state.envNext(voice_state.envNext());
+  return mix_state.next(voice_state.mix());
+}
 
 
-void loop() {audioHook();}
+void loop()
+{audioHook();}
 

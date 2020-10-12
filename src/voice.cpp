@@ -1,7 +1,7 @@
 
 //#include <inttypes.h>
 #include <Oscil.h>
-#include "ADSR.h"
+#include "CurvyADSR.h"
 #include <tables/sin2048_int8.h>
 #include <tables/saw2048_int8.h>
 #include <tables/triangle2048_int8.h>
@@ -20,10 +20,10 @@ Voice::Voice()
 {
   v_freq = 0;
   v_key = 0;
-  v_env_cache = 0;
+  //v_env_cache = 0;
   v_osc.setTable(wav_table[0]);
-  v_env_atk_curve = 0;
-  v_env_dec_curve = 0;
+  v_env_atk_curve = 1;
+  v_env_dec_curve = 1;
 }
 
 void Voice::on(uint8_t key, int attack, int decay)
@@ -32,8 +32,9 @@ void Voice::on(uint8_t key, int attack, int decay)
   v_freq = keyFreq(key);
   v_osc.setFreq_Q16n16(v_freq);
   v_env.setTimes(attack,decay,65535, 50);
-  v_env.setADLevels(v_env_atk_level, v_env_dec_level);
-  v_env_cache = 0;
+  v_env.setADCurves(v_env_atk_level, v_env_atk_curve,
+                    v_env_dec_level, v_env_dec_curve);
+  //v_env_cache = 0;
   v_env.noteOn();
 }
 
@@ -44,36 +45,14 @@ void Voice::off()
   v_env.noteOff();
 }
 
+void Voice::envUpdate() {
+  v_env.update();
+}
+
 uint8_t Voice::envNext()
 {
-  v_env.update();
-  v_env_cache = v_env.next();
-  uint8_t env_curve;
-  if (v_env.atk_phase()) {
-    env_curve = v_env_atk_curve;
-  }
-  else {
-    env_curve = v_env_dec_curve;
-  }
-  uint16_t pow_result;
-  switch (env_curve) {
-  case 2:
-    pow_result = ipow(v_env_cache, 2);
-    v_env_cache = pow_result >> 8;
-  case 1:
-    pow_result = ipow(v_env_cache, 2);
-    v_env_cache = pow_result >> 8;
-    break;
-  case 3:
-    pow_result = v_env_cache << 8;
-    v_env_cache = isqrt16(pow_result);
-  case 4:
-    pow_result = v_env_cache << 8;
-    v_env_cache = isqrt16(pow_result);
-  default:
-    break;
-  }
-  return v_env_cache;
+  //v_env_cache = v_env.next();
+  return v_env.next();
 }
 
 void Voice::setAtkCurve(uint8_t mode)
@@ -82,75 +61,18 @@ void Voice::setAtkCurve(uint8_t mode)
 void Voice::setDecCurve(uint8_t mode)
 {v_env_dec_curve = mode;}
 
-void Voice::setDecLevel(uint8_t level_num)
-{
-  level_num = 4 - level_num;
-  uint8_t level;
-  switch(level_num) {
-  case 0:
-    v_env_dec_level = 255;
-    return;
-  case 1: level = 127; break;
-  case 2: level = 63; break;
-  case 3: level = 31; break;
-  case 4: level = 15; break;
-  default: break;
-  }
-  const Q3n13 sqrt2 = 0b0010110101000001;
-  Q8n24 level_mul;
-  switch(v_env_dec_curve) {
-  case 2:
-    level_mul = (sqrt2 * level_num) << 11;
-    level = (level_mul * level) >> 24;
-  case 1:
-    level_mul = sqrt2 * level_num;
-    level = (level_mul * level) >> 24;
-  case 3:
-    level = ++level >> level_num;
-  case 4:
-    level = level >> level_num;
-  default: break;
-  }
-  v_env_dec_level = level;
-}
+void Voice::setDecLevel(uint8_t level)
+{v_env_dec_level = level;}
 
-void Voice::setAtkLevel(uint8_t level_num)
-{
-  uint8_t level;
-  switch(level_num) {
-  case 0:
-    v_env_atk_level = 255;
-    return;
-  case 1: level = 127; break;
-  case 2: level = 63; break;
-  case 3: level = 31; break;
-  case 4: level = 15; break;
-  default: break;
-  }
-  const Q3n13 sqrt2 = 0b0010110101000001;
-  Q8n24 level_mul;
-  switch(v_env_atk_curve) {
-  case 2:
-    level_mul = (sqrt2 * level_num) << 11;
-    level = (level_mul * level) >> 24;
-  case 1:
-    level_mul = sqrt2 * level_num;
-    level = (level_mul * level) >> 24;
-  case 3:
-    level = ++level >> level_num;
-  case 4:
-    level = level >> level_num;
-  default: break;
-  }
-  v_env_atk_level = level;
-}
+void Voice::setAtkLevel(uint8_t level)
+{v_env_atk_level = level;}
 
 void Voice::setTable(int8_t tab_idx)
 {v_osc.setTable(wav_table[tab_idx]);}
 
-int8_t Voice::next() 
+int8_t Voice::next()
 {
-  int8_t dry_out = ((v_env_cache*v_osc.next())>>8);
+  int8_t dry_out = ((v_env.next()*v_osc.next())>>8);
   return dry_out;
 }
 
