@@ -418,8 +418,8 @@ bool display_switch = true;
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.print("ok");
+  //Serial.begin(9600);
+  //Serial.print("ok");
   pinMode(AUDIOUT, OUTPUT);
   button_state.init();
   display.setBrightness(0x0a);

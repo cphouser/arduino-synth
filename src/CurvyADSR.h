@@ -1,6 +1,6 @@
 /*
- * CurvyCurvyADSR.h
- * Based on CurvyADSR.h -
+ * CurvyADSR.h
+ * Based on ADSR.h -
  * Copyright 2012 Tim Barrass.
  * A Part of Mozzi.
  *
